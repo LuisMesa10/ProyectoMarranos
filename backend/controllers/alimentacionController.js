@@ -1,6 +1,6 @@
 // controllers/alimentacionController.js
 const Alimentacion = require("../models/alimentacion");
-const Porcino = require("../models/Porcino");
+const Porcino = require("../models/porcino");
 
 // Crear alimentación
 exports.createAlimentacion = async (req, res) => {

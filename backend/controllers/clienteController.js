@@ -1,149 +1,284 @@
-// controllers/clienteController.js
-const Cliente = require("../models/Cliente");
-const Porcino = require("../models/Porcino");
-const { generarPDFReporte} = require("../utils/pdfGenerator.js");
+const Cliente = require('../models/cliente');
+const Porcino = require('../models/porcino');
+const Alimentacion = require('../models/alimentacion');
+const PDFDocument = require('pdfkit');
 
-// Crear nuevo cliente
-exports.crearCliente = async (req, res) => {
-  try {
-    const { cedula, nombres, apellidos, direccion, telefono } = req.body;
-
-    // Validaciones
-    if (!cedula || !nombres || !apellidos) {
-      return res.status(400).json({ mensaje: "Cédula, nombres y apellidos son obligatorios." });
+// 📌 Crear cliente
+const crearCliente = async (req, res) => {
+    try {
+        const cliente = new Cliente(req.body);
+        await cliente.save();
+        res.status(201).json({
+            success: true,
+            message: 'Cliente creado exitosamente',
+            data: cliente
+        });
+    } catch (error) {
+        if (error.code === 11000) {
+            return res.status(400).json({
+                success: false,
+                message: 'La cédula ya está registrada'
+            });
+        }
+        res.status(400).json({
+            success: false,
+            message: 'Error al crear cliente',
+            error: error.message
+        });
     }
+};
 
-    // Verificar cédula duplicada
-    const existe = await Cliente.findOne({ cedula });
-    if (existe) {
-      return res.status(400).json({ mensaje: "La cédula ya está registrada" });
+// 📌 Obtener todos los clientes
+const obtenerClientes = async (req, res) => {
+    try {
+        const clientes = await Cliente.find().sort({ createdAt: -1 });
+        res.json({
+            success: true,
+            data: clientes
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error al obtener clientes',
+            error: error.message
+        });
     }
-
-    const cliente = new Cliente({ cedula, nombres, apellidos, direccion, telefono });
-    await cliente.save();
-
-    res.status(201).json(cliente);
-  } catch (error) {
-    res.status(400).json({ mensaje: error.message });
-  }
 };
 
-// Obtener todos los clientes con sus porcinos
-exports.obtenerClientes = async (req, res) => {
-  try {
-    const clientes = await Cliente.find();
-
-    // Para cada cliente, buscar sus porcinos
-    const clientesConPorcinos = await Promise.all(
-      clientes.map(async (cliente) => {
-        const porcinos = await Porcino.find({ clienteId: cliente._id });
-        return { ...cliente.toObject(), porcinos };
-      })
-    );
-
-    res.json(clientesConPorcinos);
-  } catch (error) {
-    res.status(500).json({ mensaje: error.message });
-  }
-};
-
-// Obtener un cliente por ID con sus porcinos
-exports.obtenerClientePorId = async (req, res) => {
-  try {
-    const cliente = await Cliente.findById(req.params.id);
-    if (!cliente) return res.status(404).json({ mensaje: "Cliente no encontrado" });
-
-    const porcinos = await Porcino.find({ clienteId: cliente._id });
-
-    res.json({ ...cliente.toObject(), porcinos });
-  } catch (error) {
-    res.status(500).json({ mensaje: error.message });
-  }
-};
-
-// Actualizar un cliente
-exports.actualizarCliente = async (req, res) => {
-  try {
-    const cliente = await Cliente.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!cliente) return res.status(404).json({ mensaje: "Cliente no encontrado" });
-    res.json(cliente);
-  } catch (error) {
-    res.status(400).json({ mensaje: error.message });
-  }
-};
-
-// Eliminar un cliente
-exports.eliminarCliente = async (req, res) => {
-  try {
-    const cliente = await Cliente.findByIdAndDelete(req.params.id);
-    if (!cliente) return res.status(404).json({ mensaje: "Cliente no encontrado" });
-
-    // Eliminar también los porcinos asociados (cascada manual)
-    await Porcino.deleteMany({ clienteId: cliente._id });
-
-    res.json({ mensaje: "Cliente y sus porcinos eliminados correctamente" });
-  } catch (error) {
-    res.status(500).json({ mensaje: error.message });
-  }
-};
-
-// ====================  REPORTES ====================
-
-// Reporte por cédula de cliente
-exports.reportePorCedula = async (req, res) => {
-  try {
-    const { cedula } = req.params;
-
-    const cliente = await Cliente.findOne({ cedula });
-    if (!cliente) {
-      return res.status(404).json({ mensaje: 'Cliente no encontrado' });
+// 📌 Obtener cliente por ID
+const obtenerClientePorId = async (req, res) => {
+    try {
+        const cliente = await Cliente.findById(req.params.id);
+        if (!cliente) {
+            return res.status(404).json({
+                success: false,
+                message: 'Cliente no encontrado'
+            });
+        }
+        res.json({
+            success: true,
+            data: cliente
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error al obtener cliente',
+            error: error.message
+        });
     }
-
-    const porcinos = await Porcino.find({ clienteId: cliente._id })
-      .populate('alimentacionId');
-
-    res.json({
-      cliente,
-      porcinos
-    });
-  } catch (error) {
-    res.status(500).json({ mensaje: error.message });
-  }
 };
 
-// Reporte general (todos los clientes con sus porcinos)
-exports.reporteGeneral = async (req, res) => {
-  try {
-    const clientes = await Cliente.find();
+// 📌 Actualizar cliente
+const actualizarCliente = async (req, res) => {
+    try {
+        const cliente = await Cliente.findByIdAndUpdate(
+            req.params.id,
+            req.body,
+            { new: true, runValidators: true }
+        );
+        if (!cliente) {
+            return res.status(404).json({
+                success: false,
+                message: 'Cliente no encontrado'
+            });
+        }
+        res.json({
+            success: true,
+            message: 'Cliente actualizado exitosamente',
+            data: cliente
+        });
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            message: 'Error al actualizar cliente',
+            error: error.message
+        });
+    }
+};
 
-    const reportes = await Promise.all(
-      clientes.map(async (cliente) => {
+// 📌 Eliminar cliente
+const eliminarCliente = async (req, res) => {
+    try {
+        // Verificar si el cliente tiene porcinos asociados
+        const porcinosAsociados = await Porcino.countDocuments({ clienteId: req.params.id });
+        if (porcinosAsociados > 0) {
+            return res.status(400).json({
+                success: false,
+                message: `No se puede eliminar el cliente porque tiene ${porcinosAsociados} porcino(s) asociado(s)`
+            });
+        }
+
+        const cliente = await Cliente.findByIdAndDelete(req.params.id);
+        if (!cliente) {
+            return res.status(404).json({
+                success: false,
+                message: 'Cliente no encontrado'
+            });
+        }
+        res.json({
+            success: true,
+            message: 'Cliente eliminado exitosamente'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error al eliminar cliente',
+            error: error.message
+        });
+    }
+};
+
+// 📌 Reporte por cédula
+const reportePorCedula = async (req, res) => {
+    try {
+        const cliente = await Cliente.findOne({ cedula: req.params.cedula });
+        if (!cliente) {
+            return res.status(404).json({
+                success: false,
+                message: 'Cliente no encontrado'
+            });
+        }
+
         const porcinos = await Porcino.find({ clienteId: cliente._id })
-          .populate('alimentacionId');
-        return { cliente, porcinos };
-      })
-    );
+            .populate('alimentacionId');
 
-    res.json(reportes);
-  } catch (error) {
-    res.status(500).json({ mensaje: error.message });
-  }
+        res.json({
+            success: true,
+            data: {
+                cliente,
+                porcinos,
+                totalPorcinos: porcinos.length,
+                pesoTotal: porcinos.reduce((sum, p) => sum + p.peso, 0)
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error al generar reporte',
+            error: error.message
+        });
+    }
 };
 
-//REPORTE POR CEDULA EN PDF
-exports.reporteClientePDF = async (req, res) => {
-  try {
-    const { cedula } = req.params;
-    const cliente = await Cliente.findOne({ cedula });
-    if (!cliente) return res.status(404).json({ mensaje: "Cliente no encontrado" });
+// 📌 Reporte general
+const reporteGeneral = async (req, res) => {
+    try {
+        const clientes = await Cliente.find();
+        const porcinos = await Porcino.find().populate('clienteId alimentacionId');
 
-    const porcinos = await Porcino.find({ clienteId: cliente._id })
-      .populate("alimentacionId");
+        const reporte = await Promise.all(
+            clientes.map(async (cliente) => {
+                const porcinosCliente = porcinos.filter(p => 
+                    p.clienteId._id.toString() === cliente._id.toString()
+                );
+                return {
+                    cliente,
+                    porcinos: porcinosCliente,
+                    totalPorcinos: porcinosCliente.length,
+                    pesoTotal: porcinosCliente.reduce((sum, p) => sum + p.peso, 0)
+                };
+            })
+        );
 
-    const datos = { cliente, porcinos };
-    generarPDFReporte(datos, res);
+        res.json({
+            success: true,
+            data: {
+                reporte,
+                resumen: {
+                    totalClientes: clientes.length,
+                    totalPorcinos: porcinos.length,
+                    pesoTotalGeneral: porcinos.reduce((sum, p) => sum + p.peso, 0)
+                }
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error al generar reporte general',
+            error: error.message
+        });
+    }
+};
 
-  } catch (error) {
-    res.status(500).json({ mensaje: error.message });
-  }
+// 📌 Generar PDF de reporte cliente
+const reporteClientePDF = async (req, res) => {
+    try {
+        const cliente = await Cliente.findOne({ cedula: req.params.cedula });
+        if (!cliente) {
+            return res.status(404).json({
+                success: false,
+                message: 'Cliente no encontrado'
+            });
+        }
+
+        const porcinos = await Porcino.find({ clienteId: cliente._id })
+            .populate('alimentacionId');
+
+        // Crear PDF
+        const doc = new PDFDocument();
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="reporte-${cliente.cedula}.pdf"`);
+
+        doc.pipe(res);
+
+        // Encabezado
+        doc.fontSize(20).text('REPORTE CLIENTE - LA GRANJA S.A.', { align: 'center' });
+        doc.moveDown();
+
+        // Información del cliente
+        doc.fontSize(14).text('INFORMACIÓN DEL CLIENTE', { underline: true });
+        doc.fontSize(12);
+        doc.text(`Cédula: ${cliente.cedula}`);
+        doc.text(`Nombres: ${cliente.nombres}`);
+        doc.text(`Apellidos: ${cliente.apellidos}`);
+        doc.text(`Dirección: ${cliente.direccion || 'No especificada'}`);
+        doc.text(`Teléfono: ${cliente.telefono || 'No especificado'}`);
+        doc.moveDown();
+
+        // Información de porcinos
+        doc.fontSize(14).text('PORCINOS ASOCIADOS', { underline: true });
+        doc.fontSize(10);
+
+        if (porcinos.length === 0) {
+            doc.text('No tiene porcinos registrados');
+        } else {
+            porcinos.forEach((porcino, index) => {
+                const razaTexto = porcino.raza === 1 ? 'York' : 
+                                porcino.raza === 2 ? 'Hampshire' : 'Duroc';
+
+                doc.text(`${index + 1}. ID: ${porcino.identificacion}`);
+                doc.text(`   Raza: ${razaTexto}`);
+                doc.text(`   Edad: ${porcino.edad} meses`);
+                doc.text(`   Peso: ${porcino.peso} kg`);
+                doc.text(`   Alimentación: ${porcino.alimentacionId?.descripcion || 'No especificada'}`);
+                doc.text(`   Dosis: ${porcino.alimentacionId?.dosis || 'No especificada'}`);
+                doc.moveDown(0.5);
+            });
+
+            // Resumen
+            doc.moveDown();
+            doc.fontSize(12).text('RESUMEN:', { underline: true });
+            doc.text(`Total de porcinos: ${porcinos.length}`);
+            doc.text(`Peso total: ${porcinos.reduce((sum, p) => sum + p.peso, 0)} kg`);
+        }
+
+        doc.end();
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error al generar PDF',
+            error: error.message
+        });
+    }
+};
+
+module.exports = {
+    crearCliente,
+    obtenerClientes,
+    obtenerClientePorId,
+    actualizarCliente,
+    eliminarCliente,
+    reportePorCedula,
+    reporteGeneral,
+    reporteClientePDF
 };
