@@ -64,8 +64,8 @@
 
       <!-- Navegación de pestañas -->
       <nav class="tabs-nav">
-        <button 
-          v-for="tab in tabs" 
+        <button
+          v-for="tab in tabs"
           :key="tab.id"
           @click="tabActiva = tab.id"
           :class="['tab-button', { 'active': tabActiva === tab.id }]"
@@ -86,11 +86,11 @@
               Información del Cliente
             </h3>
             <div class="panel-actions">
-              <button @click="toggleModoEdicion" class="btn btn-secondary">
+              <button @click=" ModoEdicion" class="btn btn-secondary">
                 <i :class="modoEdicion ? 'fas fa-times' : 'fas fa-edit'"></i>
                 {{ modoEdicion ? 'Cancelar' : 'Editar' }}
               </button>
-              <button 
+              <button
                 v-if="modoEdicion"
                 @click="guardarCliente"
                 :disabled="!clienteModificado"
@@ -209,22 +209,22 @@
           </div>
 
           <div v-else class="porcinos-grid">
-            <div 
-              v-for="porcino in porcinos" 
+            <div
+              v-for="porcino in porcinos"
               :key="porcino._id || porcino.id"
               class="porcino-card"
             >
               <div class="card-header">
                 <h4 class="porcino-id">{{ porcino.identificacion }}</h4>
                 <div class="card-actions">
-                  <button 
+                  <button
                     @click="abrirModalPorcino(porcino)"
                     class="btn btn-sm btn-outline-secondary"
                     title="Editar"
                   >
                     <i class="fas fa-edit"></i>
                   </button>
-                  <button 
+                  <button
                     @click="confirmarEliminarPorcino(porcino)"
                     class="btn btn-sm btn-outline-danger"
                     title="Eliminar"
@@ -287,8 +287,8 @@
           </div>
 
           <div v-else class="alimentaciones-list">
-            <div 
-              v-for="alimentacion in alimentaciones" 
+            <div
+              v-for="alimentacion in alimentaciones"
               :key="alimentacion._id || alimentacion.id"
               class="alimentacion-card"
             >
@@ -300,14 +300,14 @@
                 </p>
               </div>
               <div class="card-actions">
-                <button 
+                <button
                   @click="abrirModalAlimentacion(alimentacion)"
                   class="btn btn-sm btn-outline-secondary"
                   title="Editar"
                 >
                   <i class="fas fa-edit"></i>
                 </button>
-                <button 
+                <button
                   @click="confirmarEliminarAlimentacion(alimentacion)"
                   class="btn btn-sm btn-outline-danger"
                   title="Eliminar"
@@ -322,7 +322,7 @@
     </div>
 
     <!-- Modales -->
-    <ModalPorcino 
+    <ModalPorcino
       v-if="mostrarModalPorcino"
       :porcino="porcinoSeleccionado"
       :cliente-id="clienteId"
@@ -331,14 +331,14 @@
       @cerrar="cerrarModalPorcino"
     />
 
-    <ModalAlimentacion 
+    <ModalAlimentacion
       v-if="mostrarModalAlimentacion"
       :alimentacion="alimentacionSeleccionada"
       @guardar="guardarAlimentacion"
       @cerrar="cerrarModalAlimentacion"
     />
 
-    <ModalConfirmacion 
+    <ModalConfirmacion
       v-if="mostrarModalConfirmacion"
       :titulo="confirmacion.titulo"
       :mensaje="confirmacion.mensaje"
@@ -352,9 +352,9 @@
 <script>
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { 
-  clienteService, 
-  porcinoService, 
+import {
+  clienteService,
+  porcinoService,
   alimentacionService,
   getRazaNombre
 } from '@/services/apiService'
@@ -419,7 +419,7 @@ export default {
     })
     const clienteModificado = computed(() => {
       if (!cliente.value) return false
-      return Object.keys(clienteEditado).some(key => 
+      return Object.keys(clienteEditado).some(key =>
         clienteEditado[key] !== (cliente.value[key] || '')
       )
     })
@@ -442,7 +442,7 @@ export default {
     const cargarPorcinos = async () => {
       try {
         const response = await porcinoService.obtenerPorcinos(clienteId.value)
-        porcinos.value = (response.data || response).filter(p => 
+        porcinos.value = (response.data || response).filter(p =>
           (p.clienteId === clienteId.value) || (p.clienteId._id === clienteId.value)
         )
       } catch (error) {
@@ -464,7 +464,7 @@ export default {
     const cargarTodosDatos = async () => {
       await Promise.all([
         cargarCliente(),
-        cargarPorcinos(), 
+        cargarPorcinos(),
         cargarAlimentaciones()
       ])
     }
@@ -641,7 +641,7 @@ export default {
       if (typeof alimentacionId === 'object' && alimentacionId.descripcion) {
         alimentacion = alimentacionId
       } else {
-        alimentacion = alimentaciones.value.find(a => 
+        alimentacion = alimentaciones.value.find(a =>
           (a._id === alimentacionId) || (a.id === alimentacionId)
         )
       }

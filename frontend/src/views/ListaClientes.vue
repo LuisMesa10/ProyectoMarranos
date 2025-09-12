@@ -29,13 +29,7 @@
       </div>
     </div>
 
-    <!-- Mensaje de estado
-    <div v-if="!backendConnected" class="alert alert-warning">
-      <i class="fas fa-exclamation-triangle"></i>
-      Sin conexión con el servidor. Mostrando datos de ejemplo.
-    </div>
-
-     Tabla de clientes -->
+    <!-- Tabla de clientes -->
     <div class="table-container">
       <div v-if="clientesFiltrados.length === 0 && !isLoading" class="empty-state">
         <i class="fas fa-user-slash"></i>
@@ -177,7 +171,6 @@ export default {
 
     // Estado de carga
     const isLoading = computed(() => globalStore.isLoading)
-    const backendConnected = computed(() => globalStore.backendConnected)
 
     // Clientes filtrados por búsqueda
     const clientesFiltrados = computed(() => {
@@ -230,9 +223,11 @@ export default {
         globalStore.setLoading(true, 'Cargando clientes...')
         const response = await clienteService.obtenerClientes()
         clientes.value = response.data || response
-        globalStore.updateClientesCache(clientes.value)
+        globalStore.backendConnected = true
+        console.log('✅ Backend conectado exitosamente')
       } catch (error) {
         globalStore.handleApiError(error, 'Error al cargar clientes')
+        globalStore.backendConnected = false
         // Usar datos de ejemplo si no hay conexión
         clientes.value = [
           {
@@ -243,15 +238,6 @@ export default {
             apellidos: 'Pérez García',
             direccion: 'Calle 123 # 45-67',
             telefono: '310-123-4567'
-          },
-          {
-            id: 2,
-            _id: '2',
-            cedula: '87654321',
-            nombres: 'María Elena',
-            apellidos: 'Rodríguez López',
-            direccion: 'Carrera 89 # 12-34',
-            telefono: '320-987-6543'
           }
         ]
       } finally {
@@ -270,6 +256,8 @@ export default {
     }
 
     const getPorcinosCount = (clienteId) => {
+      if (!clienteId) return 0
+
       return porcinos.value.filter(p =>
         p.clienteId === clienteId || p.clienteId?._id === clienteId
       ).length
@@ -307,14 +295,14 @@ export default {
         globalStore.setLoading(true, 'Guardando cliente...')
 
         if (clienteSeleccionado.value) {
-          // Actualizar - SIN asignar response
+          // Actualizar
           await clienteService.actualizarCliente(
             clienteSeleccionado.value._id || clienteSeleccionado.value.id,
             clienteData
           )
           globalStore.handleSuccess('Cliente actualizado exitosamente')
         } else {
-          // Crear - SIN asignar response
+          // Crear
           await clienteService.crearCliente(clienteData)
           globalStore.handleSuccess('Cliente creado exitosamente')
         }
@@ -328,22 +316,45 @@ export default {
       }
     }
 
-
+    // ✅ MÉTODOS DE ELIMINACIÓN - ESTE ERA EL PROBLEMA
     const confirmarEliminar = (cliente) => {
-      const porcinosAsociados = getPorcinosCount(cliente._id || cliente.id)
+      console.log('🔥 CONFIRMAR ELIMINAR EJECUTADO:', cliente) // DEBUG
 
-      if (porcinosAsociados > 0) {
-        globalStore.showNotification(
-          `No se puede eliminar el cliente porque tiene ${porcinosAsociados} porcino(s) asociado(s)`,
-          'warning',
-          6000
-        )
+      if (!cliente) {
+        console.error('❌ Cliente no definido')
+        globalStore.showNotification('Error: Cliente no encontrado', 'error')
         return
       }
 
+      const clienteId = cliente._id || cliente.id
+      const porcinosAsociados = getPorcinosCount(clienteId)
+
+      console.log('🐷 Porcinos asociados:', porcinosAsociados)
+
+      if (porcinosAsociados > 0) {
+        console.log('entra al if')
+        try {
+          console.log('🚀 EJECUTANDO showNotification...')
+
+          const result = globalStore.showNotification(
+            `No se puede eliminar el cliente "${cliente.nombres} ${cliente.apellidos}" porque tiene ${porcinosAsociados} porcino(s) asociado(s). Elimina primero sus porcinos.`, 'warning', 6000
+          )
+
+
+          console.log('✅ showNotification ejecutado, resultado:', result)
+          console.log('📋 Notificaciones actuales:', globalStore.notifications)
+
+        } catch (error) {
+          console.error('❌ ERROR en showNotification:', error)
+        }
+        return
+      }
+
+      console.log('✅ Mostrando modal de confirmación')
+
       confirmacion.value = {
         titulo: 'Confirmar Eliminación',
-        mensaje: `¿Está seguro de eliminar el cliente ${cliente.nombres} ${cliente.apellidos}?`,
+        mensaje: `¿Está seguro de eliminar el cliente ${cliente.nombres} ${cliente.apellidos}?\n\nEsta acción no se puede deshacer.`,
         tipo: 'danger',
         accion: () => eliminarCliente(cliente)
       }
@@ -352,11 +363,19 @@ export default {
 
     const eliminarCliente = async (cliente) => {
       try {
+        console.log('🗑️ ELIMINAR CLIENTE EJECUTADO:', cliente)
+
         globalStore.setLoading(true, 'Eliminando cliente...')
-        await clienteService.eliminarCliente(cliente._id || cliente.id)
+
+        const clienteId = cliente._id || cliente.id
+        await clienteService.eliminarCliente(clienteId)
+
         globalStore.handleSuccess('Cliente eliminado exitosamente')
         await cargarClientes()
+
+        console.log('✅ Cliente eliminado exitosamente')
       } catch (error) {
+        console.error('❌ Error al eliminar cliente:', error)
         globalStore.handleApiError(error, 'Error al eliminar cliente')
       } finally {
         globalStore.setLoading(false)
@@ -364,6 +383,7 @@ export default {
     }
 
     const ejecutarConfirmacion = () => {
+      console.log('✅ Usuario confirmó la eliminación')
       if (confirmacion.value.accion) {
         confirmacion.value.accion()
       }
@@ -371,6 +391,7 @@ export default {
     }
 
     const cerrarModalConfirmacion = () => {
+      console.log('❌ Cerrando modal de confirmación')
       mostrarModalConfirmacion.value = false
       confirmacion.value = {}
     }
@@ -405,7 +426,6 @@ export default {
 
       // Computed
       isLoading,
-      backendConnected,
       clientesFiltrados,
       clientesOrdenados,
       totalPages,
@@ -438,9 +458,9 @@ export default {
 
 /* Header */
 .view-header {
-  background: var(--white);
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
+  background: white;
+  border-radius: 0.375rem;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
   margin-bottom: 2rem;
   padding: 1.5rem;
 }
@@ -460,12 +480,12 @@ export default {
 
 .view-title h2 {
   margin: 0;
-  color: var(--primary-color);
+  color: #2e7d5e;
 }
 
 .count-badge {
-  background: var(--primary-color);
-  color: var(--white);
+  background: #2e7d5e;
+  color: white;
   padding: 0.25rem 0.75rem;
   border-radius: 1rem;
   font-size: 0.875rem;
@@ -488,21 +508,21 @@ export default {
 .search-box i {
   position: absolute;
   left: 1rem;
-  color: var(--gray-400);
+  color: #adb5bd;
   z-index: 2;
 }
 
 .search-input {
   padding: 0.75rem 0.75rem 0.75rem 2.5rem;
-  border: 1px solid var(--gray-300);
-  border-radius: var(--border-radius);
+  border: 1px solid #dee2e6;
+  border-radius: 0.375rem;
   width: 300px;
   font-size: 0.875rem;
 }
 
 .search-input:focus {
   outline: none;
-  border-color: var(--primary-color);
+  border-color: #2e7d5e;
   box-shadow: 0 0 0 3px rgba(46, 125, 94, 0.1);
 }
 
@@ -511,7 +531,7 @@ export default {
   right: 0.5rem;
   background: none;
   border: none;
-  color: var(--gray-400);
+  color: #adb5bd;
   cursor: pointer;
   padding: 0.5rem;
   border-radius: 50%;
@@ -519,53 +539,36 @@ export default {
 }
 
 .clear-search:hover {
-  background: var(--gray-100);
+  background: #f8f9fa;
 }
 
 .btn-new-client {
   white-space: nowrap;
 }
 
-/* Alertas */
-.alert {
-  padding: 1rem;
-  border-radius: var(--border-radius);
-  border-left: 4px solid;
-  margin-bottom: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.alert-warning {
-  background: #fff3cd;
-  border-left-color: var(--warning-color);
-  color: #856404;
-}
-
 /* Tabla */
 .table-container {
-  background: var(--white);
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
+  background: white;
+  border-radius: 0.375rem;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
   overflow: hidden;
 }
 
 .empty-state {
   text-align: center;
   padding: 4rem 2rem;
-  color: var(--gray-500);
+  color: #adb5bd;
 }
 
 .empty-state i {
   font-size: 3rem;
   margin-bottom: 1rem;
-  color: var(--gray-300);
+  color: #dee2e6;
 }
 
 .empty-state h3 {
   margin-bottom: 0.5rem;
-  color: var(--gray-600);
+  color: #6c757d;
 }
 
 .empty-state p {
@@ -582,11 +585,11 @@ export default {
 }
 
 .clients-table th {
-  background: var(--gray-50);
+  background: #f8f9fa;
   padding: 1rem;
   text-align: left;
   font-weight: 600;
-  border-bottom: 2px solid var(--gray-200);
+  border-bottom: 2px solid #e9ecef;
   white-space: nowrap;
 }
 
@@ -594,7 +597,7 @@ export default {
   background: none;
   border: none;
   font-weight: 600;
-  color: var(--gray-700);
+  color: #343a40;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -602,17 +605,17 @@ export default {
 }
 
 .sort-button:hover {
-  color: var(--primary-color);
+  color: #2e7d5e;
 }
 
 .clients-table td {
   padding: 1rem;
-  border-bottom: 1px solid var(--gray-200);
+  border-bottom: 1px solid #e9ecef;
   vertical-align: middle;
 }
 
 .client-row:hover {
-  background: var(--gray-50);
+  background: #f8f9fa;
 }
 
 .client-name strong {
@@ -621,7 +624,7 @@ export default {
 }
 
 .client-name small {
-  color: var(--gray-500);
+  color: #adb5bd;
   font-size: 0.875rem;
 }
 
@@ -629,11 +632,11 @@ export default {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--gray-600);
+  color: #6c757d;
 }
 
 .no-phone {
-  color: var(--gray-400);
+  color: #adb5bd;
   font-style: italic;
 }
 
@@ -641,8 +644,8 @@ export default {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: var(--primary-color);
-  color: var(--white);
+  background: #2e7d5e;
+  color: white;
   padding: 0.25rem 0.75rem;
   border-radius: 1rem;
   font-size: 0.875rem;
@@ -655,34 +658,85 @@ export default {
   gap: 0.5rem;
 }
 
+/* Botones */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.375rem;
+  text-decoration: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: center;
+  white-space: nowrap;
+  font-size: 0.875rem;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: #2e7d5e;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #267049;
+  transform: translateY(-1px);
+}
+
+.btn-sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8125rem;
+}
+
 .btn-outline-primary {
-  color: var(--primary-color);
-  border-color: var(--primary-color);
+  color: #2e7d5e;
+  border: 1px solid #2e7d5e;
+  background: transparent;
 }
 
 .btn-outline-primary:hover {
-  background: var(--primary-color);
-  color: var(--white);
+  background: #2e7d5e;
+  color: white;
 }
 
 .btn-outline-secondary {
-  color: var(--secondary-color);
-  border-color: var(--secondary-color);
+  color: #4a90b8;
+  border: 1px solid #4a90b8;
+  background: transparent;
 }
 
 .btn-outline-secondary:hover {
-  background: var(--secondary-color);
-  color: var(--white);
+  background: #4a90b8;
+  color: white;
 }
 
 .btn-outline-danger {
-  color: var(--danger-color);
-  border-color: var(--danger-color);
+  color: #dc3545;
+  border: 1px solid #dc3545;
+  background: transparent;
 }
 
 .btn-outline-danger:hover {
-  background: var(--danger-color);
-  color: var(--white);
+  background: #dc3545;
+  color: white;
+}
+
+.btn-outline {
+  color: #6c757d;
+  border: 1px solid #6c757d;
+  background: transparent;
+}
+
+.btn-outline:hover:not(:disabled) {
+  background: #6c757d;
+  color: white;
 }
 
 /* Paginación */
@@ -692,12 +746,12 @@ export default {
   align-items: center;
   gap: 1rem;
   padding: 2rem;
-  border-top: 1px solid var(--gray-200);
+  border-top: 1px solid #e9ecef;
 }
 
 .pagination-info {
   font-weight: 500;
-  color: var(--gray-600);
+  color: #6c757d;
 }
 
 /* Responsive */
