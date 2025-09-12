@@ -1,183 +1,135 @@
 <template>
-  <div class="modal-overlay" @click.self="cerrar">
-    <div class="modal-content">
+  <div class="modal-overlay" @click="cerrarModal">
+    <div class="modal-dialog modal-lg" @click.stop>
       <div class="modal-header">
-        <h3 class="modal-title">
+        <h4 class="modal-title">
           <i class="fas fa-pig"></i>
           {{ porcino ? 'Editar Porcino' : 'Nuevo Porcino' }}
-        </h3>
-        <button @click="cerrar" class="modal-close">
+        </h4>
+        <button @click="cerrarModal" class="close-button">
           <i class="fas fa-times"></i>
         </button>
       </div>
 
-      <form @submit.prevent="guardar" class="modal-body">
-        <!-- Identificación -->
-        <div class="form-group">
-          <label for="identificacion" class="form-label required">
-            <i class="fas fa-tag"></i>
-            Identificación
-          </label>
-          <input
-            id="identificacion"
-            type="text"
-            v-model="form.identificacion"
-            :class="['form-control', { 'error': errores.identificacion }]"
-            placeholder="Ej: P001, PORCINO-001"
-            maxlength="20"
-            @input="validarCampo('identificacion')"
-          >
-          <div v-if="errores.identificacion" class="error-message">
-            {{ errores.identificacion }}
-          </div>
-        </div>
-
-        <!-- Raza -->
-        <div class="form-group">
-          <label for="raza" class="form-label required">
-            <i class="fas fa-dna"></i>
-            Raza
-          </label>
-          <select
-            id="raza"
-            v-model="form.raza"
-            :class="['form-control', { 'error': errores.raza }]"
-            @change="validarCampo('raza')"
-          >
-            <option value="">Seleccione una raza</option>
-            <option value="1">York</option>
-            <option value="2">Hampshire</option>
-            <option value="3">Duroc</option>
-          </select>
-          <div v-if="errores.raza" class="error-message">
-            {{ errores.raza }}
-          </div>
-        </div>
-
-        <!-- Edad y Peso en la misma fila -->
-        <div class="form-row">
+      <form @submit.prevent="guardarPorcino" class="modal-body">
+        <div class="form-grid">
+          <!-- Identificación -->
           <div class="form-group">
-            <label for="edad" class="form-label required">
+            <label class="form-label required">
+              <i class="fas fa-tag"></i>
+              Identificación
+            </label>
+            <input
+              v-model="form.identificacion"
+              type="text"
+              class="form-control"
+              :class="{ 'error': errors.identificacion }"
+              placeholder="Código único del porcino"
+              maxlength="20"
+              required
+            >
+            <small v-if="errors.identificacion" class="error-message">{{ errors.identificacion }}</small>
+          </div>
+
+          <!-- Raza -->
+          <div class="form-group">
+            <label class="form-label required">
+              <i class="fas fa-dna"></i>
+              Raza
+            </label>
+            <select
+              v-model="form.raza"
+              class="form-control"
+              :class="{ 'error': errors.raza }"
+              required
+            >
+              <option value="">Seleccionar raza</option>
+              <option value="1">Yorkshire</option>
+              <option value="2">Hampshire</option>
+              <option value="3">Duroc</option>
+            </select>
+            <small v-if="errors.raza" class="error-message">{{ errors.raza }}</small>
+          </div>
+
+          <!-- Edad -->
+          <div class="form-group">
+            <label class="form-label required">
               <i class="fas fa-calendar-alt"></i>
               Edad (meses)
             </label>
             <input
-              id="edad"
+              v-model.number="form.edad"
               type="number"
-              v-model="form.edad"
-              :class="['form-control', { 'error': errores.edad }]"
-              placeholder="0"
+              class="form-control"
+              :class="{ 'error': errors.edad }"
+              placeholder="Edad en meses"
               min="0"
               max="120"
-              @input="validarCampo('edad')"
+              required
             >
-            <div v-if="errores.edad" class="error-message">
-              {{ errores.edad }}
-            </div>
+            <small v-if="errors.edad" class="error-message">{{ errors.edad }}</small>
           </div>
 
+          <!-- Peso -->
           <div class="form-group">
-            <label for="peso" class="form-label required">
+            <label class="form-label required">
               <i class="fas fa-weight"></i>
               Peso (kg)
             </label>
             <input
-              id="peso"
+              v-model.number="form.peso"
               type="number"
-              v-model="form.peso"
-              :class="['form-control', { 'error': errores.peso }]"
-              placeholder="0.0"
-              min="0"
-              max="500"
               step="0.1"
-              @input="validarCampo('peso')"
+              class="form-control"
+              :class="{ 'error': errors.peso }"
+              placeholder="Peso en kilogramos"
+              min="0"
+              max="1000"
+              required
             >
-            <div v-if="errores.peso" class="error-message">
-              {{ errores.peso }}
-            </div>
+            <small v-if="errors.peso" class="error-message">{{ errors.peso }}</small>
           </div>
-        </div>
 
-        <!-- Alimentación -->
-        <div class="form-group">
-          <label for="alimentacionId" class="form-label required">
-            <i class="fas fa-apple-alt"></i>
-            Alimentación
-          </label>
-          <select
-            id="alimentacionId"
-            v-model="form.alimentacionId"
-            :class="['form-control', { 'error': errores.alimentacionId }]"
-            @change="validarCampo('alimentacionId')"
-          >
-            <option value="">Seleccione una alimentación</option>
-            <option 
-              v-for="alimentacion in alimentaciones" 
-              :key="alimentacion._id || alimentacion.id"
-              :value="alimentacion._id || alimentacion.id"
+          <!-- Alimentación -->
+          <div class="form-group span-full">
+            <label class="form-label required">
+              <i class="fas fa-apple-alt"></i>
+              Alimentación
+            </label>
+            <select
+              v-model="form.alimentacionId"
+              class="form-control"
+              :class="{ 'error': errors.alimentacionId }"
+              required
             >
-              {{ alimentacion.descripcion }}
-              <span v-if="alimentacion.dosis"> - {{ alimentacion.dosis }}</span>
-            </option>
-          </select>
-          <div v-if="errores.alimentacionId" class="error-message">
-            {{ errores.alimentacionId }}
-          </div>
-          <div v-if="alimentaciones.length === 0" class="form-help">
-            <i class="fas fa-exclamation-triangle"></i>
-            No hay alimentaciones disponibles. 
-            <a href="#" @click.prevent="$emit('crearAlimentacion')" class="link">
-              Crear una nueva alimentación
-            </a>
-          </div>
-        </div>
-
-        <!-- Vista previa de datos -->
-        <div v-if="formularioValido" class="preview-card">
-          <h4>
-            <i class="fas fa-eye"></i>
-            Vista Previa
-          </h4>
-          <div class="preview-content">
-            <div class="preview-item">
-              <strong>ID:</strong> {{ form.identificacion }}
-            </div>
-            <div class="preview-item">
-              <strong>Raza:</strong> 
-              <span :class="'raza-badge raza-' + form.raza">
-                {{ getRazaNombre(parseInt(form.raza)) }}
-              </span>
-            </div>
-            <div class="preview-item">
-              <strong>Edad:</strong> {{ form.edad }} meses
-            </div>
-            <div class="preview-item">
-              <strong>Peso:</strong> {{ form.peso }} kg
-            </div>
-            <div class="preview-item">
-              <strong>Alimentación:</strong> {{ getAlimentacionNombre() }}
-            </div>
+              <option value="">Seleccionar alimentación</option>
+              <option 
+                v-for="alimentacion in alimentaciones" 
+                :key="alimentacion._id || alimentacion.id"
+                :value="alimentacion._id || alimentacion.id"
+              >
+                {{ alimentacion.descripcion }}
+                <span v-if="alimentacion.dosis"> - {{ alimentacion.dosis }}</span>
+              </option>
+            </select>
+            <small v-if="errors.alimentacionId" class="error-message">{{ errors.alimentacionId }}</small>
+            <small v-if="alimentaciones.length === 0" class="warning-message">
+              <i class="fas fa-exclamation-triangle"></i>
+              No hay alimentaciones disponibles. Créala primero en la pestaña Alimentaciones.
+            </small>
           </div>
         </div>
 
         <!-- Botones -->
         <div class="modal-footer">
-          <button 
-            type="button"
-            @click="cerrar"
-            class="btn btn-secondary"
-          >
+          <button type="button" @click="cerrarModal" class="btn btn-secondary">
             <i class="fas fa-times"></i>
             Cancelar
           </button>
-          <button 
-            type="submit"
-            :disabled="!formularioValido || guardando"
-            class="btn btn-primary"
-          >
+          <button type="submit" :disabled="guardando || alimentaciones.length === 0" class="btn btn-primary">
             <i v-if="guardando" class="fas fa-spinner fa-spin"></i>
             <i v-else class="fas fa-save"></i>
-            {{ guardando ? 'Guardando...' : 'Guardar Porcino' }}
+            {{ guardando ? 'Guardando...' : 'Guardar' }}
           </button>
         </div>
       </form>
@@ -186,11 +138,11 @@
 </template>
 
 <script>
-import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import { validaciones, getRazaNombre } from '@/services/apiService'
+import { ref, reactive, watch, onMounted, onBeforeUnmount } from 'vue'
 
 export default {
   name: 'ModalPorcino',
+  emits: ['guardar', 'cerrar'],
   props: {
     porcino: {
       type: Object,
@@ -205,10 +157,18 @@ export default {
       default: () => []
     }
   },
-  emits: ['guardar', 'cerrar', 'crearAlimentacion'],
   setup(props, { emit }) {
     // Estado del formulario
     const form = reactive({
+      identificacion: '',
+      raza: '',
+      edad: null,
+      peso: null,
+      alimentacionId: ''
+    })
+
+    // Estado de validación
+    const errors = reactive({
       identificacion: '',
       raza: '',
       edad: '',
@@ -216,103 +176,89 @@ export default {
       alimentacionId: ''
     })
 
-    // Estado de validación
-    const errores = reactive({})
+    // Estado de carga
     const guardando = ref(false)
 
-    // Computed
-    const formularioValido = computed(() => {
-      return !errores.identificacion && 
-             !errores.raza && 
-             !errores.edad && 
-             !errores.peso && 
-             !errores.alimentacionId &&
-             form.identificacion.trim() &&
-             form.raza &&
-             form.edad &&
-             form.peso &&
-             form.alimentacionId
-    })
-
-    // Métodos de validación
-    const validarCampo = (campo) => {
-      const valor = form[campo]?.toString().trim()
-
-      switch (campo) {
-        case 'identificacion':
-          errores.identificacion = validaciones.identificacionPorcino(valor)
-          break
-        case 'raza':
-          errores.raza = validaciones.raza(valor)
-          break
-        case 'edad':
-          errores.edad = validaciones.edad(valor)
-          break
-        case 'peso':
-          errores.peso = validaciones.peso(valor)
-          break
-        case 'alimentacionId':
-          if (!valor) {
-            errores.alimentacionId = 'Debe seleccionar una alimentación'
-          } else {
-            errores.alimentacionId = null
-          }
-          break
-      }
-    }
-
-    const validarFormulario = () => {
-      validarCampo('identificacion')
-      validarCampo('raza')
-      validarCampo('edad')
-      validarCampo('peso')
-      validarCampo('alimentacionId')
-
-      return formularioValido.value
-    }
-
-    // Métodos auxiliares
-    const getAlimentacionNombre = () => {
-      if (!form.alimentacionId) return ''
-      const alimentacion = props.alimentaciones.find(a => 
-        (a._id === form.alimentacionId) || (a.id === form.alimentacionId)
-      )
-      return alimentacion ? alimentacion.descripcion : ''
-    }
-
-    // Métodos principales
+    // Inicializar formulario
     const inicializarFormulario = () => {
       if (props.porcino) {
         // Modo edición - cargar datos existentes
         form.identificacion = props.porcino.identificacion || ''
-        form.raza = props.porcino.raza?.toString() || ''
-        form.edad = props.porcino.edad?.toString() || ''
-        form.peso = props.porcino.peso?.toString() || ''
-
-        // Manejar alimentacionId que puede ser objeto o ID
-        if (props.porcino.alimentacionId) {
-          if (typeof props.porcino.alimentacionId === 'object') {
-            form.alimentacionId = props.porcino.alimentacionId._id || props.porcino.alimentacionId.id
-          } else {
-            form.alimentacionId = props.porcino.alimentacionId
-          }
-        } else {
-          form.alimentacionId = ''
-        }
+        form.raza = props.porcino.raza ? String(props.porcino.raza) : ''
+        form.edad = props.porcino.edad || null
+        form.peso = props.porcino.peso || null
+        form.alimentacionId = props.porcino.alimentacionId?._id || props.porcino.alimentacionId || ''
       } else {
         // Modo creación - limpiar formulario
-        Object.keys(form).forEach(key => {
-          form[key] = ''
-        })
+        form.identificacion = ''
+        form.raza = ''
+        form.edad = null
+        form.peso = null
+        form.alimentacionId = ''
       }
 
       // Limpiar errores
-      Object.keys(errores).forEach(key => {
-        delete errores[key]
-      })
+      limpiarErrores()
     }
 
-    const guardar = async () => {
+    // Limpiar errores
+    const limpiarErrores = () => {
+      errors.identificacion = ''
+      errors.raza = ''
+      errors.edad = ''
+      errors.peso = ''
+      errors.alimentacionId = ''
+    }
+
+    // Validar formulario
+    const validarFormulario = () => {
+      limpiarErrores()
+      let esValido = true
+
+      // Validar identificación
+      if (!form.identificacion.trim()) {
+        errors.identificacion = 'La identificación es obligatoria'
+        esValido = false
+      } else if (form.identificacion.trim().length < 2) {
+        errors.identificacion = 'La identificación debe tener al menos 2 caracteres'
+        esValido = false
+      }
+
+      // Validar raza
+      if (!form.raza) {
+        errors.raza = 'La raza es obligatoria'
+        esValido = false
+      }
+
+      // Validar edad
+      if (form.edad === null || form.edad === undefined || form.edad === '') {
+        errors.edad = 'La edad es obligatoria'
+        esValido = false
+      } else if (form.edad < 0 || form.edad > 120) {
+        errors.edad = 'La edad debe estar entre 0 y 120 meses'
+        esValido = false
+      }
+
+      // Validar peso
+      if (form.peso === null || form.peso === undefined || form.peso === '') {
+        errors.peso = 'El peso es obligatorio'
+        esValido = false
+      } else if (form.peso <= 0 || form.peso > 1000) {
+        errors.peso = 'El peso debe estar entre 0.1 y 1000 kg'
+        esValido = false
+      }
+
+      // Validar alimentación
+      if (!form.alimentacionId) {
+        errors.alimentacionId = 'La alimentación es obligatoria'
+        esValido = false
+      }
+
+      return esValido
+    }
+
+    // Guardar porcino
+    const guardarPorcino = async () => {
       if (!validarFormulario()) {
         return
       }
@@ -320,9 +266,9 @@ export default {
       guardando.value = true
 
       try {
-        // Preparar datos para enviar
+        // Preparar datos
         const porcinoData = {
-          identificacion: form.identificacion.trim().toUpperCase(),
+          identificacion: form.identificacion.trim(),
           raza: parseInt(form.raza),
           edad: parseInt(form.edad),
           peso: parseFloat(form.peso),
@@ -330,23 +276,24 @@ export default {
           clienteId: props.clienteId
         }
 
-        // Emitir evento de guardado
+        // Emitir evento al componente padre
         emit('guardar', porcinoData)
       } catch (error) {
-        console.error('Error al guardar porcino:', error)
+        console.error('Error en guardarPorcino:', error)
       } finally {
         guardando.value = false
       }
     }
 
-    const cerrar = () => {
+    // Cerrar modal
+    const cerrarModal = () => {
       emit('cerrar')
     }
 
-    // Manejar tecla ESC
-    const handleEscKey = (event) => {
+    // Manejar escape key
+    const manejarEscape = (event) => {
       if (event.key === 'Escape') {
-        cerrar()
+        cerrarModal()
       }
     }
 
@@ -355,25 +302,14 @@ export default {
       inicializarFormulario()
     }, { immediate: true })
 
-    watch(() => props.alimentaciones, () => {
-      // Si se actualiza la lista de alimentaciones y no hay una seleccionada,
-      // seleccionar la primera disponible
-      if (props.alimentaciones.length > 0 && !form.alimentacionId) {
-        // Solo en modo creación
-        if (!props.porcino) {
-          form.alimentacionId = props.alimentaciones[0]._id || props.alimentaciones[0].id
-        }
-      }
-    })
-
     // Lifecycle
     onMounted(() => {
-      // Agregar listener para tecla ESC
-      document.addEventListener('keydown', handleEscKey)
+      document.addEventListener('keydown', manejarEscape)
+      inicializarFormulario()
 
-      // Auto-focus en el primer campo
+      // Auto-focus en el primer input
       setTimeout(() => {
-        const firstInput = document.getElementById('identificacion')
+        const firstInput = document.querySelector('.modal-dialog input')
         if (firstInput) {
           firstInput.focus()
         }
@@ -381,19 +317,15 @@ export default {
     })
 
     onBeforeUnmount(() => {
-      document.removeEventListener('keydown', handleEscKey)
+      document.removeEventListener('keydown', manejarEscape)
     })
 
     return {
       form,
-      errores,
+      errors,
       guardando,
-      formularioValido,
-      validarCampo,
-      guardar,
-      cerrar,
-      getRazaNombre,
-      getAlimentacionNombre
+      guardarPorcino,
+      cerrarModal
     }
   }
 }
@@ -406,7 +338,7 @@ export default {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -414,26 +346,20 @@ export default {
   padding: 1rem;
 }
 
-.modal-content {
-  background: var(--white);
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow-lg);
-  width: 100%;
+.modal-dialog {
+  background: white;
+  border-radius: 0.375rem;
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175);
   max-width: 600px;
+  width: 100%;
   max-height: 90vh;
-  overflow-y: auto;
-  animation: modalSlideIn 0.3s ease-out;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-@keyframes modalSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-50px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+.modal-lg {
+  max-width: 700px;
 }
 
 .modal-header {
@@ -441,48 +367,54 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem;
-  border-bottom: 1px solid var(--gray-200);
-  background: var(--gray-50);
+  border-bottom: 1px solid #e9ecef;
+  background: #f8f9fa;
 }
 
 .modal-title {
   margin: 0;
-  color: var(--primary-color);
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  color: #2e7d5e;
   font-size: 1.25rem;
-  font-weight: 600;
 }
 
-.modal-close {
+.close-button {
   background: none;
   border: none;
+  color: #6c757d;
   font-size: 1.25rem;
-  color: var(--gray-400);
   cursor: pointer;
   padding: 0.5rem;
-  border-radius: var(--border-radius);
-  transition: all 0.2s;
+  border-radius: 50%;
+  transition: all 0.3s;
 }
 
-.modal-close:hover {
-  background: var(--gray-200);
-  color: var(--gray-600);
+.close-button:hover {
+  background: #e9ecef;
+  color: #2e7d5e;
 }
 
 .modal-body {
   padding: 2rem;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.span-full {
+  grid-column: 1 / -1;
 }
 
 .form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .form-label {
@@ -491,123 +423,84 @@ export default {
   gap: 0.5rem;
   margin-bottom: 0.5rem;
   font-weight: 500;
-  color: var(--gray-700);
+  color: #343a40;
+  font-size: 0.875rem;
 }
 
 .form-label.required::after {
   content: '*';
-  color: var(--danger-color);
+  color: #dc3545;
   margin-left: 0.25rem;
 }
 
 .form-control {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid var(--gray-300);
-  border-radius: var(--border-radius);
+  border: 1px solid #dee2e6;
+  border-radius: 0.375rem;
   font-size: 1rem;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .form-control:focus {
   outline: none;
-  border-color: var(--primary-color);
+  border-color: #2e7d5e;
   box-shadow: 0 0 0 3px rgba(46, 125, 94, 0.1);
 }
 
 .form-control.error {
-  border-color: var(--danger-color);
+  border-color: #dc3545;
 }
 
 .form-control.error:focus {
+  border-color: #dc3545;
   box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
 }
 
 .error-message {
-  color: var(--danger-color);
-  font-size: 0.875rem;
+  display: block;
   margin-top: 0.25rem;
+  color: #dc3545;
+  font-size: 0.8125rem;
+}
+
+.warning-message {
+  display: block;
+  margin-top: 0.25rem;
+  color: #856404;
+  font-size: 0.8125rem;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.25rem;
 }
 
-.error-message::before {
-  content: '⚠';
-  font-size: 0.75rem;
+select.form-control {
+  cursor: pointer;
 }
-
-.form-help {
-  color: var(--gray-600);
-  font-size: 0.875rem;
-  margin-top: 0.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.form-help .link {
-  color: var(--primary-color);
-  text-decoration: none;
-}
-
-.form-help .link:hover {
-  text-decoration: underline;
-}
-
-/* Vista previa */
-.preview-card {
-  background: var(--gray-50);
-  border: 1px solid var(--gray-200);
-  border-radius: var(--border-radius);
-  padding: 1.5rem;
-  margin: 1.5rem 0;
-}
-
-.preview-card h4 {
-  margin: 0 0 1rem 0;
-  color: var(--primary-color);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 1rem;
-}
-
-.preview-content {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 0.75rem;
-}
-
-.preview-item {
-  font-size: 0.875rem;
-}
-
-.preview-item strong {
-  color: var(--gray-700);
-}
-
-.raza-badge {
-  background: var(--primary-color);
-  color: var(--white);
-  padding: 0.125rem 0.5rem;
-  border-radius: 0.5rem;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  font-weight: 600;
-}
-
-.raza-1 { background: #28a745; } /* York - Verde */
-.raza-2 { background: #007bff; } /* Hampshire - Azul */
-.raza-3 { background: #fd7e14; } /* Duroc - Naranja */
 
 .modal-footer {
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
-  margin-top: 2rem;
   padding-top: 1.5rem;
-  border-top: 1px solid var(--gray-200);
+  border-top: 1px solid #e9ecef;
+  margin-top: 1rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.375rem;
+  text-decoration: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: center;
+  white-space: nowrap;
+  font-size: 0.875rem;
 }
 
 .btn:disabled {
@@ -615,13 +508,53 @@ export default {
   cursor: not-allowed;
 }
 
-.fa-spin {
-  animation: spin 1s linear infinite;
+.btn-primary {
+  background-color: #2e7d5e;
+  color: white;
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+.btn-primary:hover:not(:disabled) {
+  background-color: #267049;
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #5a6268;
+  transform: translateY(-1px);
+}
+
+/* Animaciones */
+.modal-overlay {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal-dialog {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* Responsive */
@@ -630,7 +563,7 @@ export default {
     padding: 0.5rem;
   }
 
-  .modal-content {
+  .modal-dialog {
     max-height: 95vh;
   }
 
@@ -639,21 +572,17 @@ export default {
     padding: 1rem;
   }
 
-  .form-row {
-    grid-template-columns: 1fr;
-  }
-
-  .preview-content {
+  .form-grid {
     grid-template-columns: 1fr;
   }
 
   .modal-footer {
-    flex-direction: column;
+    flex-direction: column-reverse;
     gap: 0.5rem;
   }
 
   .btn {
-    width: 100%;
+    justify-content: center;
   }
 }
 </style>

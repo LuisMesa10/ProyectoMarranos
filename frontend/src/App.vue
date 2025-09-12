@@ -71,7 +71,7 @@
 <script>
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { useGlobalStore } from '@/stores/global'
+import { useGlobalStore } from '@/stores/globalStore'
 
 export default {
   name: 'App',

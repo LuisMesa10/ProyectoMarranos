@@ -38,7 +38,7 @@
                 maxlength="10"
                 @input="limpiarResultados"
               >
-              <button 
+              <button
                 type="submit"
                 :disabled="!cedulaBusqueda.trim() || buscandoCliente"
                 class="search-button"
@@ -76,7 +76,7 @@
                 </div>
               </div>
               <div class="client-actions">
-                <button 
+                <button
                   @click="descargarPDF(reporteCliente.cliente.cedula)"
                   :disabled="generandoPDF"
                   class="btn btn-primary"
@@ -176,8 +176,9 @@
       </div>
 
       <div class="section-content">
+        <!--
         <div class="general-actions">
-          <button 
+          <button
             @click="generarReporteGeneral"
             :disabled="cargandoGeneral"
             class="btn btn-secondary btn-lg"
@@ -187,6 +188,7 @@
             {{ cargandoGeneral ? 'Generando...' : 'Generar Reporte General' }}
           </button>
         </div>
+        -->
 
         <!-- Resumen general -->
         <div v-if="reporteGeneral" class="general-report">
@@ -238,8 +240,8 @@
             </div>
 
             <div class="clients-grid">
-              <div 
-                v-for="item in clientesOrdenados" 
+              <div
+                v-for="item in clientesOrdenados"
                 :key="item.cliente._id"
                 class="client-summary-card"
               >
@@ -258,7 +260,7 @@
                   </div>
                 </div>
                 <div class="card-actions">
-                  <button 
+                  <button
                     @click="buscarClienteDirecto(item.cliente.cedula)"
                     class="btn btn-sm btn-outline-primary"
                   >
@@ -278,10 +280,10 @@
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { clienteService, getRazaNombre } from '@/services/apiService'
-import { useGlobalStore } from '@/stores/global'
+import { useGlobalStore } from '@/stores/globalStore'
 
 export default {
-  name: 'Reportes',
+  name: 'ReportesView',
   setup() {
     const globalStore = useGlobalStore()
 
@@ -312,7 +314,7 @@ export default {
 
       switch (filtroOrden.value) {
         case 'nombre':
-          return clientes.sort((a, b) => 
+          return clientes.sort((a, b) =>
             `${a.cliente.nombres} ${a.cliente.apellidos}`.localeCompare(
               `${b.cliente.nombres} ${b.cliente.apellidos}`
             )

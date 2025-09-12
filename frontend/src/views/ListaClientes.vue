@@ -13,26 +13,15 @@
           <!-- Búsqueda -->
           <div class="search-box">
             <i class="fas fa-search"></i>
-            <input 
-              type="text"
-              v-model="searchTerm"
-              placeholder="Buscar por cédula, nombre o apellido..."
-              class="search-input"
-            >
-            <button 
-              v-if="searchTerm"
-              @click="clearSearch"
-              class="clear-search"
-            >
+            <input type="text" v-model="searchTerm" placeholder="Buscar por cédula, nombre o apellido..."
+              class="search-input">
+            <button v-if="searchTerm" @click="clearSearch" class="clear-search">
               <i class="fas fa-times"></i>
             </button>
           </div>
 
           <!-- Botón nuevo cliente -->
-          <button 
-            @click="abrirModalCliente()"
-            class="btn btn-primary btn-new-client"
-          >
+          <button @click="abrirModalCliente()" class="btn btn-primary btn-new-client">
             <i class="fas fa-plus"></i>
             Nuevo Cliente
           </button>
@@ -40,23 +29,19 @@
       </div>
     </div>
 
-    <!-- Mensaje de estado -->
+    <!-- Mensaje de estado
     <div v-if="!backendConnected" class="alert alert-warning">
       <i class="fas fa-exclamation-triangle"></i>
       Sin conexión con el servidor. Mostrando datos de ejemplo.
     </div>
 
-    <!-- Tabla de clientes -->
+     Tabla de clientes -->
     <div class="table-container">
       <div v-if="clientesFiltrados.length === 0 && !isLoading" class="empty-state">
         <i class="fas fa-user-slash"></i>
         <h3>{{ searchTerm ? 'No se encontraron clientes' : 'No hay clientes registrados' }}</h3>
         <p>{{ searchTerm ? 'Intenta con otros términos de búsqueda' : 'Comienza agregando tu primer cliente' }}</p>
-        <button 
-          v-if="!searchTerm"
-          @click="abrirModalCliente()"
-          class="btn btn-primary"
-        >
+        <button v-if="!searchTerm" @click="abrirModalCliente()" class="btn btn-primary">
           <i class="fas fa-plus"></i>
           Agregar Primer Cliente
         </button>
@@ -84,11 +69,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr 
-              v-for="cliente in clientesPaginados" 
-              :key="cliente._id || cliente.id"
-              class="client-row"
-            >
+            <tr v-for="cliente in clientesPaginados" :key="cliente._id || cliente.id" class="client-row">
               <td class="client-cedula">
                 {{ cliente.cedula }}
               </td>
@@ -113,25 +94,13 @@
               </td>
               <td class="client-actions">
                 <div class="action-buttons">
-                  <button 
-                    @click="verDetalle(cliente)"
-                    class="btn btn-sm btn-outline-primary"
-                    title="Ver detalle"
-                  >
+                  <button @click="verDetalle(cliente)" class="btn btn-sm btn-outline-primary" title="Ver detalle">
                     <i class="fas fa-eye"></i>
                   </button>
-                  <button 
-                    @click="abrirModalCliente(cliente)"
-                    class="btn btn-sm btn-outline-secondary"
-                    title="Editar"
-                  >
+                  <button @click="abrirModalCliente(cliente)" class="btn btn-sm btn-outline-secondary" title="Editar">
                     <i class="fas fa-edit"></i>
                   </button>
-                  <button 
-                    @click="confirmarEliminar(cliente)"
-                    class="btn btn-sm btn-outline-danger"
-                    title="Eliminar"
-                  >
+                  <button @click="confirmarEliminar(cliente)" class="btn btn-sm btn-outline-danger" title="Eliminar">
                     <i class="fas fa-trash"></i>
                   </button>
                 </div>
@@ -143,18 +112,10 @@
 
       <!-- Paginación -->
       <div v-if="totalPages > 1" class="pagination">
-        <button 
-          @click="paginaActual = 1"
-          :disabled="paginaActual === 1"
-          class="btn btn-sm btn-outline"
-        >
+        <button @click="paginaActual = 1" :disabled="paginaActual === 1" class="btn btn-sm btn-outline">
           <i class="fas fa-angle-double-left"></i>
         </button>
-        <button 
-          @click="paginaActual--"
-          :disabled="paginaActual === 1"
-          class="btn btn-sm btn-outline"
-        >
+        <button @click="paginaActual--" :disabled="paginaActual === 1" class="btn btn-sm btn-outline">
           <i class="fas fa-angle-left"></i>
         </button>
 
@@ -162,40 +123,23 @@
           Página {{ paginaActual }} de {{ totalPages }}
         </span>
 
-        <button 
-          @click="paginaActual++"
-          :disabled="paginaActual === totalPages"
-          class="btn btn-sm btn-outline"
-        >
+        <button @click="paginaActual++" :disabled="paginaActual === totalPages" class="btn btn-sm btn-outline">
           <i class="fas fa-angle-right"></i>
         </button>
-        <button 
-          @click="paginaActual = totalPages"
-          :disabled="paginaActual === totalPages"
-          class="btn btn-sm btn-outline"
-        >
+        <button @click="paginaActual = totalPages" :disabled="paginaActual === totalPages"
+          class="btn btn-sm btn-outline">
           <i class="fas fa-angle-double-right"></i>
         </button>
       </div>
     </div>
 
     <!-- Modal de Cliente -->
-    <ModalCliente 
-      v-if="mostrarModalCliente"
-      :cliente="clienteSeleccionado"
-      @guardar="guardarCliente"
-      @cerrar="cerrarModalCliente"
-    />
+    <ModalCliente v-if="mostrarModalCliente" :cliente="clienteSeleccionado" @guardar="guardarCliente"
+      @cerrar="cerrarModalCliente" />
 
     <!-- Modal de Confirmación -->
-    <ModalConfirmacion 
-      v-if="mostrarModalConfirmacion"
-      :titulo="confirmacion.titulo"
-      :mensaje="confirmacion.mensaje"
-      :tipo="confirmacion.tipo"
-      @confirmar="ejecutarConfirmacion"
-      @cancelar="cerrarModalConfirmacion"
-    />
+    <ModalConfirmacion v-if="mostrarModalConfirmacion" :titulo="confirmacion.titulo" :mensaje="confirmacion.mensaje"
+      :tipo="confirmacion.tipo" @confirmar="ejecutarConfirmacion" @cancelar="cerrarModalConfirmacion" />
   </div>
 </template>
 
@@ -203,7 +147,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { clienteService, porcinoService } from '@/services/apiService'
-import { useGlobalStore } from '@/stores/global'
+import { useGlobalStore } from '@/stores/globalStore'
 import ModalCliente from '@/components/ModalCliente.vue'
 import ModalConfirmacion from '@/components/ModalConfirmacion.vue'
 
@@ -240,7 +184,7 @@ export default {
       if (!searchTerm.value) return clientesOrdenados.value
 
       const termino = searchTerm.value.toLowerCase()
-      return clientesOrdenados.value.filter(cliente => 
+      return clientesOrdenados.value.filter(cliente =>
         cliente.cedula.toLowerCase().includes(termino) ||
         cliente.nombres.toLowerCase().includes(termino) ||
         cliente.apellidos.toLowerCase().includes(termino)
@@ -326,7 +270,9 @@ export default {
     }
 
     const getPorcinosCount = (clienteId) => {
-      return porcinos.value.filter(p => p.clienteId === clienteId || p.clienteId._id === clienteId).length
+      return porcinos.value.filter(p =>
+        p.clienteId === clienteId || p.clienteId?._id === clienteId
+      ).length
     }
 
     const cambiarOrden = (campo) => {
@@ -361,15 +307,15 @@ export default {
         globalStore.setLoading(true, 'Guardando cliente...')
 
         if (clienteSeleccionado.value) {
-          // Actualizar
-          const response = await clienteService.actualizarCliente(
-            clienteSeleccionado.value._id || clienteSeleccionado.value.id, 
+          // Actualizar - SIN asignar response
+          await clienteService.actualizarCliente(
+            clienteSeleccionado.value._id || clienteSeleccionado.value.id,
             clienteData
           )
           globalStore.handleSuccess('Cliente actualizado exitosamente')
         } else {
-          // Crear
-          const response = await clienteService.crearCliente(clienteData)
+          // Crear - SIN asignar response
+          await clienteService.crearCliente(clienteData)
           globalStore.handleSuccess('Cliente creado exitosamente')
         }
 
@@ -381,6 +327,7 @@ export default {
         globalStore.setLoading(false)
       }
     }
+
 
     const confirmarEliminar = (cliente) => {
       const porcinosAsociados = getPorcinosCount(cliente._id || cliente.id)

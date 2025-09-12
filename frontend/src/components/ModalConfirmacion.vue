@@ -1,33 +1,25 @@
 <template>
-  <div class="modal-overlay" @click.self="cancelar">
-    <div class="modal-content" :class="[`modal--${tipo}`]">
+  <div class="modal-overlay" @click="cancelar">
+    <div class="modal-dialog" @click.stop :class="'modal-' + tipo">
       <div class="modal-header">
-        <div class="modal-icon">
-          <i :class="getIconClass()"></i>
-        </div>
-        <h3 class="modal-title">{{ titulo }}</h3>
+        <h4 class="modal-title">
+          <i :class="iconoTipo"></i>
+          {{ titulo }}
+        </h4>
       </div>
 
       <div class="modal-body">
-        <p class="modal-message">{{ mensaje }}</p>
+        <p>{{ mensaje }}</p>
       </div>
 
       <div class="modal-footer">
-        <button 
-          @click="cancelar"
-          class="btn btn-secondary"
-          ref="cancelButton"
-        >
+        <button @click="cancelar" class="btn btn-secondary">
           <i class="fas fa-times"></i>
           Cancelar
         </button>
-        <button 
-          @click="confirmar"
-          :class="getConfirmButtonClass()"
-          ref="confirmButton"
-        >
-          <i :class="getConfirmIconClass()"></i>
-          {{ getConfirmText() }}
+        <button @click="confirmar" :class="botonClase">
+          <i :class="iconoBoton"></i>
+          {{ textoBoton }}
         </button>
       </div>
     </div>
@@ -35,14 +27,15 @@
 </template>
 
 <script>
-import { onMounted, onBeforeUnmount } from 'vue'
+import { computed, onMounted, onBeforeUnmount } from 'vue'
 
 export default {
   name: 'ModalConfirmacion',
+  emits: ['confirmar', 'cancelar'],
   props: {
     titulo: {
       type: String,
-      default: 'Confirmación'
+      default: 'Confirmar Acción'
     },
     mensaje: {
       type: String,
@@ -50,54 +43,53 @@ export default {
     },
     tipo: {
       type: String,
-      default: 'info', // info, warning, danger, success
-      validator: (value) => ['info', 'warning', 'danger', 'success'].includes(value)
+      default: 'warning', // warning, danger, info, success
+      validator: (value) => ['warning', 'danger', 'info', 'success'].includes(value)
     }
   },
-  emits: ['confirmar', 'cancelar'],
   setup(props, { emit }) {
-    // Métodos para obtener clases dinámicas
-    const getIconClass = () => {
-      const icons = {
-        info: 'fas fa-info-circle',
+    // Computed properties para diferentes tipos
+    const iconoTipo = computed(() => {
+      const iconos = {
         warning: 'fas fa-exclamation-triangle',
         danger: 'fas fa-exclamation-circle',
+        info: 'fas fa-info-circle',
         success: 'fas fa-check-circle'
       }
-      return icons[props.tipo] || icons.info
-    }
+      return iconos[props.tipo] || iconos.warning
+    })
 
-    const getConfirmButtonClass = () => {
-      const classes = {
-        info: 'btn btn-primary',
-        warning: 'btn btn-warning',
-        danger: 'btn btn-danger',
-        success: 'btn btn-success'
-      }
-      return classes[props.tipo] || classes.info
-    }
-
-    const getConfirmIconClass = () => {
-      const icons = {
-        info: 'fas fa-check',
-        warning: 'fas fa-check',
+    const iconoBoton = computed(() => {
+      const iconos = {
+        warning: 'fas fa-exclamation-triangle',
         danger: 'fas fa-trash',
+        info: 'fas fa-check',
         success: 'fas fa-check'
       }
-      return icons[props.tipo] || icons.info
-    }
+      return iconos[props.tipo] || iconos.warning
+    })
 
-    const getConfirmText = () => {
-      const texts = {
-        info: 'Confirmar',
+    const textoBoton = computed(() => {
+      const textos = {
         warning: 'Continuar',
         danger: 'Eliminar',
-        success: 'Confirmar'
+        info: 'Confirmar',
+        success: 'Aceptar'
       }
-      return texts[props.tipo] || texts.info
-    }
+      return textos[props.tipo] || textos.warning
+    })
 
-    // Métodos principales
+    const botonClase = computed(() => {
+      const clases = {
+        warning: 'btn btn-warning',
+        danger: 'btn btn-danger',
+        info: 'btn btn-primary',
+        success: 'btn btn-success'
+      }
+      return clases[props.tipo] || clases.warning
+    })
+
+    // Métodos
     const confirmar = () => {
       emit('confirmar')
     }
@@ -106,43 +98,35 @@ export default {
       emit('cancelar')
     }
 
-    // Manejo de teclado
-    const handleKeydown = (event) => {
+    // Manejar escape key
+    const manejarEscape = (event) => {
       if (event.key === 'Escape') {
         cancelar()
-      } else if (event.key === 'Enter') {
-        confirmar()
       }
     }
 
     // Lifecycle
     onMounted(() => {
-      // Agregar listener de teclado
-      document.addEventListener('keydown', handleKeydown)
+      document.addEventListener('keydown', manejarEscape)
 
-      // Focus en el botón apropiado según el tipo
+      // Auto-focus en el botón de cancelar para seguridad
       setTimeout(() => {
-        if (props.tipo === 'danger') {
-          // Para eliminaciones, focus en cancelar por seguridad
-          const cancelButton = document.querySelector('.modal-content .btn-secondary')
-          if (cancelButton) cancelButton.focus()
-        } else {
-          // Para otros casos, focus en confirmar
-          const confirmButton = document.querySelector('.modal-content .btn-primary, .modal-content .btn-warning, .modal-content .btn-success')
-          if (confirmButton) confirmButton.focus()
+        const cancelButton = document.querySelector('.btn-secondary')
+        if (cancelButton) {
+          cancelButton.focus()
         }
       }, 100)
     })
 
     onBeforeUnmount(() => {
-      document.removeEventListener('keydown', handleKeydown)
+      document.removeEventListener('keydown', manejarEscape)
     })
 
     return {
-      getIconClass,
-      getConfirmButtonClass,
-      getConfirmIconClass,
-      getConfirmText,
+      iconoTipo,
+      iconoBoton,
+      textoBoton,
+      botonClase,
       confirmar,
       cancelar
     }
@@ -157,172 +141,207 @@ export default {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1100;
+  z-index: 1050;
   padding: 1rem;
 }
 
-.modal-content {
-  background: var(--white);
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow-lg);
+.modal-dialog {
+  background: white;
+  border-radius: 0.375rem;
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+  max-width: 400px;
   width: 100%;
-  max-width: 450px;
-  animation: modalSlideIn 0.3s ease-out;
-  border-top: 4px solid;
+  overflow: hidden;
 }
 
-/* Colores por tipo */
-.modal--info {
-  border-top-color: var(--info-color);
+.modal-warning {
+  border-left: 4px solid #ffc107;
 }
 
-.modal--warning {
-  border-top-color: var(--warning-color);
+.modal-danger {
+  border-left: 4px solid #dc3545;
 }
 
-.modal--danger {
-  border-top-color: var(--danger-color);
+.modal-info {
+  border-left: 4px solid #0dcaf0;
 }
 
-.modal--success {
-  border-top-color: var(--success-color);
-}
-
-@keyframes modalSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-50px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+.modal-success {
+  border-left: 4px solid #198754;
 }
 
 .modal-header {
-  padding: 2rem 1.5rem 1rem;
-  text-align: center;
-}
-
-.modal-icon {
-  margin-bottom: 1rem;
-}
-
-.modal-icon i {
-  font-size: 3rem;
-}
-
-.modal--info .modal-icon i {
-  color: var(--info-color);
-}
-
-.modal--warning .modal-icon i {
-  color: var(--warning-color);
-}
-
-.modal--danger .modal-icon i {
-  color: var(--danger-color);
-}
-
-.modal--success .modal-icon i {
-  color: var(--success-color);
+  padding: 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+  background: #f8f9fa;
 }
 
 .modal-title {
   margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--gray-800);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.125rem;
+}
+
+.modal-warning .modal-title {
+  color: #664d03;
+}
+
+.modal-danger .modal-title {
+  color: #842029;
+}
+
+.modal-info .modal-title {
+  color: #055160;
+}
+
+.modal-success .modal-title {
+  color: #0f5132;
 }
 
 .modal-body {
-  padding: 0 1.5rem 1rem;
-  text-align: center;
+  padding: 2rem;
 }
 
-.modal-message {
+.modal-body p {
   margin: 0;
-  font-size: 1rem;
-  line-height: 1.5;
-  color: var(--gray-600);
+  color: #495057;
+  line-height: 1.6;
 }
 
 .modal-footer {
-  padding: 1.5rem;
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
   gap: 1rem;
-  border-top: 1px solid var(--gray-200);
+  padding: 1.5rem;
+  border-top: 1px solid #e9ecef;
+  background: #f8f9fa;
 }
 
-/* Estilos específicos para botones de confirmación */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.375rem;
+  text-decoration: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: center;
+  white-space: nowrap;
+  font-size: 0.875rem;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: #0d6efd;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #0b5ed7;
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #5a6268;
+  transform: translateY(-1px);
+}
+
 .btn-warning {
-  background-color: var(--warning-color);
-  color: var(--white);
-  border-color: var(--warning-color);
+  background-color: #ffc107;
+  color: #212529;
 }
 
-.btn-warning:hover {
-  background-color: #e0a800;
-  border-color: #d39e00;
+.btn-warning:hover:not(:disabled) {
+  background-color: #ffca2c;
+  transform: translateY(-1px);
 }
 
-.btn-warning:focus {
-  box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.25);
+.btn-danger {
+  background-color: #dc3545;
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: #bb2d3b;
+  transform: translateY(-1px);
+}
+
+.btn-success {
+  background-color: #198754;
+  color: white;
+}
+
+.btn-success:hover:not(:disabled) {
+  background-color: #157347;
+  transform: translateY(-1px);
+}
+
+/* Animaciones */
+.modal-overlay {
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modal-dialog {
+  animation: scaleIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* Responsive */
-@media (max-width: 576px) {
+@media (max-width: 768px) {
   .modal-overlay {
     padding: 0.5rem;
   }
 
-  .modal-header {
-    padding: 1.5rem 1rem 0.5rem;
-  }
-
-  .modal-body {
-    padding: 0 1rem 0.5rem;
+  .modal-header,
+  .modal-body,
+  .modal-footer {
+    padding: 1rem;
   }
 
   .modal-footer {
-    padding: 1rem;
-    flex-direction: column;
+    flex-direction: column-reverse;
     gap: 0.5rem;
   }
 
   .btn {
-    width: 100%;
+    justify-content: center;
   }
-
-  .modal-icon i {
-    font-size: 2.5rem;
-  }
-
-  .modal-title {
-    font-size: 1.25rem;
-  }
-
-  .modal-message {
-    font-size: 0.9rem;
-  }
-}
-
-/* Animación para el foco */
-.btn:focus {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb, 46, 125, 94), 0.25);
-}
-
-.btn-secondary:focus {
-  box-shadow: 0 0 0 3px rgba(108, 117, 125, 0.25);
-}
-
-.btn-danger:focus {
-  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.25);
 }
 </style>

@@ -86,7 +86,7 @@
               Información del Cliente
             </h3>
             <div class="panel-actions">
-              <button @click="modoEdicion = !modoEdicion" class="btn btn-secondary">
+              <button @click="toggleModoEdicion" class="btn btn-secondary">
                 <i :class="modoEdicion ? 'fas fa-times' : 'fas fa-edit'"></i>
                 {{ modoEdicion ? 'Cancelar' : 'Editar' }}
               </button>
@@ -358,7 +358,7 @@ import {
   alimentacionService,
   getRazaNombre
 } from '@/services/apiService'
-import { useGlobalStore } from '@/stores/global'
+import { useGlobalStore } from '@/stores/globalStore'
 import ModalPorcino from '@/components/ModalPorcino.vue'
 import ModalAlimentacion from '@/components/ModalAlimentacion.vue'
 import ModalConfirmacion from '@/components/ModalConfirmacion.vue'
@@ -424,16 +424,305 @@ export default {
       )
     })
 
-    // Métodos principales - aquí iría toda la lógica del script anterior
-    // [Todos los métodos del script de DetalleCliente_parte1.vue]
+    // Métodos de carga de datos
+    const cargarCliente = async () => {
+      try {
+        globalStore.setLoading(true, 'Cargando cliente...')
+        const response = await clienteService.obtenerClientePorId(clienteId.value)
+        cliente.value = response.data || response
+        inicializarClienteEditado()
+      } catch (error) {
+        globalStore.handleApiError(error, 'Error al cargar cliente')
+        cliente.value = null
+      } finally {
+        globalStore.setLoading(false)
+      }
+    }
+
+    const cargarPorcinos = async () => {
+      try {
+        const response = await porcinoService.obtenerPorcinos(clienteId.value)
+        porcinos.value = (response.data || response).filter(p => 
+          (p.clienteId === clienteId.value) || (p.clienteId._id === clienteId.value)
+        )
+      } catch (error) {
+        console.warn('Error al cargar porcinos:', error)
+        porcinos.value = []
+      }
+    }
+
+    const cargarAlimentaciones = async () => {
+      try {
+        const response = await alimentacionService.obtenerAlimentaciones()
+        alimentaciones.value = response.data || response
+      } catch (error) {
+        console.warn('Error al cargar alimentaciones:', error)
+        alimentaciones.value = []
+      }
+    }
+
+    const cargarTodosDatos = async () => {
+      await Promise.all([
+        cargarCliente(),
+        cargarPorcinos(), 
+        cargarAlimentaciones()
+      ])
+    }
+
+    // Métodos de cliente
+    const inicializarClienteEditado = () => {
+      if (cliente.value) {
+        clienteEditado.cedula = cliente.value.cedula || ''
+        clienteEditado.nombres = cliente.value.nombres || ''
+        clienteEditado.apellidos = cliente.value.apellidos || ''
+        clienteEditado.direccion = cliente.value.direccion || ''
+        clienteEditado.telefono = cliente.value.telefono || ''
+      }
+    }
+
+    const toggleModoEdicion = () => {
+      modoEdicion.value = !modoEdicion.value
+      if (!modoEdicion.value) {
+        inicializarClienteEditado() // Restaurar valores originales
+      }
+    }
+
+    const guardarCliente = async () => {
+      try {
+        globalStore.setLoading(true, 'Guardando cliente...')
+        const response = await clienteService.actualizarCliente(clienteId.value, clienteEditado)
+        cliente.value = response.data || response
+        modoEdicion.value = false
+        globalStore.handleSuccess('Cliente actualizado exitosamente')
+      } catch (error) {
+        globalStore.handleApiError(error, 'Error al guardar cliente')
+      } finally {
+        globalStore.setLoading(false)
+      }
+    }
+
+    // Métodos de porcinos
+    const abrirModalPorcino = (porcino = null) => {
+      porcinoSeleccionado.value = porcino
+      mostrarModalPorcino.value = true
+    }
+
+    const cerrarModalPorcino = () => {
+      mostrarModalPorcino.value = false
+      porcinoSeleccionado.value = null
+    }
+
+    const guardarPorcino = async (porcinoData) => {
+      try {
+        globalStore.setLoading(true, 'Guardando porcino...')
+
+        if (porcinoSeleccionado.value) {
+          await porcinoService.actualizarPorcino(
+            porcinoSeleccionado.value._id || porcinoSeleccionado.value.id,
+            porcinoData
+          )
+          globalStore.handleSuccess('Porcino actualizado exitosamente')
+        } else {
+          await porcinoService.crearPorcino({
+            ...porcinoData,
+            clienteId: clienteId.value
+          })
+          globalStore.handleSuccess('Porcino creado exitosamente')
+        }
+
+        cerrarModalPorcino()
+        await cargarPorcinos()
+      } catch (error) {
+        globalStore.handleApiError(error, 'Error al guardar porcino')
+      } finally {
+        globalStore.setLoading(false)
+      }
+    }
+
+    const confirmarEliminarPorcino = (porcino) => {
+      confirmacion.value = {
+        titulo: 'Confirmar Eliminación',
+        mensaje: `¿Está seguro de eliminar el porcino ${porcino.identificacion}?`,
+        tipo: 'danger',
+        accion: () => eliminarPorcino(porcino)
+      }
+      mostrarModalConfirmacion.value = true
+    }
+
+    const eliminarPorcino = async (porcino) => {
+      try {
+        globalStore.setLoading(true, 'Eliminando porcino...')
+        await porcinoService.eliminarPorcino(porcino._id || porcino.id)
+        await cargarPorcinos()
+        globalStore.handleSuccess('Porcino eliminado exitosamente')
+      } catch (error) {
+        globalStore.handleApiError(error, 'Error al eliminar porcino')
+      } finally {
+        globalStore.setLoading(false)
+      }
+    }
+
+    // Métodos de alimentación
+    const abrirModalAlimentacion = (alimentacion = null) => {
+      alimentacionSeleccionada.value = alimentacion
+      mostrarModalAlimentacion.value = true
+    }
+
+    const cerrarModalAlimentacion = () => {
+      mostrarModalAlimentacion.value = false
+      alimentacionSeleccionada.value = null
+    }
+
+    const guardarAlimentacion = async (alimentacionData) => {
+      try {
+        globalStore.setLoading(true, 'Guardando alimentación...')
+
+        if (alimentacionSeleccionada.value) {
+          await alimentacionService.actualizarAlimentacion(
+            alimentacionSeleccionada.value._id || alimentacionSeleccionada.value.id,
+            alimentacionData
+          )
+          globalStore.handleSuccess('Alimentación actualizada exitosamente')
+        } else {
+          await alimentacionService.crearAlimentacion(alimentacionData)
+          globalStore.handleSuccess('Alimentación creada exitosamente')
+        }
+
+        cerrarModalAlimentacion()
+        await cargarAlimentaciones()
+      } catch (error) {
+        globalStore.handleApiError(error, 'Error al guardar alimentación')
+      } finally {
+        globalStore.setLoading(false)
+      }
+    }
+
+    const confirmarEliminarAlimentacion = (alimentacion) => {
+      confirmacion.value = {
+        titulo: 'Confirmar Eliminación',
+        mensaje: `¿Está seguro de eliminar la alimentación "${alimentacion.descripcion}"?`,
+        tipo: 'danger',
+        accion: () => eliminarAlimentacion(alimentacion)
+      }
+      mostrarModalConfirmacion.value = true
+    }
+
+    const eliminarAlimentacion = async (alimentacion) => {
+      try {
+        globalStore.setLoading(true, 'Eliminando alimentación...')
+        await alimentacionService.eliminarAlimentacion(alimentacion._id || alimentacion.id)
+        await cargarAlimentaciones()
+        globalStore.handleSuccess('Alimentación eliminada exitosamente')
+      } catch (error) {
+        globalStore.handleApiError(error, 'Error al eliminar alimentación')
+      } finally {
+        globalStore.setLoading(false)
+      }
+    }
+
+    // Métodos de confirmación
+    const ejecutarConfirmacion = () => {
+      if (confirmacion.value.accion) {
+        confirmacion.value.accion()
+      }
+      cerrarModalConfirmacion()
+    }
+
+    const cerrarModalConfirmacion = () => {
+      mostrarModalConfirmacion.value = false
+      confirmacion.value = {}
+    }
+
+    // Métodos auxiliares
+    const getAlimentacionNombre = (alimentacionId) => {
+      if (!alimentacionId) return 'Sin alimentación'
+
+      let alimentacion
+      if (typeof alimentacionId === 'object' && alimentacionId.descripcion) {
+        alimentacion = alimentacionId
+      } else {
+        alimentacion = alimentaciones.value.find(a => 
+          (a._id === alimentacionId) || (a.id === alimentacionId)
+        )
+      }
+
+      return alimentacion ? alimentacion.descripcion : 'Alimentación no encontrada'
+    }
+
+    // Watchers
+    watch(() => route.params.id, (newId) => {
+      if (newId !== clienteId.value) {
+        cargarTodosDatos()
+      }
+    })
+
+    watch(() => cliente.value, () => {
+      inicializarClienteEditado()
+    })
+
+    // Lifecycle
+    onMounted(() => {
+      cargarTodosDatos()
+    })
 
     return {
-      // Todos los returns del setup anterior
+      // Estado principal
+      cliente,
+      porcinos,
+      alimentaciones,
+      cargandoCliente,
+
+      // Store global
+      globalStore,
+
+      // Pestañas
+      tabActiva,
+      tabs,
+
+      // Edición de cliente
+      modoEdicion,
+      clienteEditado,
+      clienteModificado,
+
+      // Modales
+      mostrarModalPorcino,
+      porcinoSeleccionado,
+      mostrarModalAlimentacion,
+      alimentacionSeleccionada,
+      mostrarModalConfirmacion,
+      confirmacion,
+
+      // Computed
+      clienteId,
+      pesoTotal,
+
+      // Métodos de cliente
+      toggleModoEdicion,
+      guardarCliente,
+
+      // Métodos de porcinos
+      abrirModalPorcino,
+      cerrarModalPorcino,
+      guardarPorcino,
+      confirmarEliminarPorcino,
+
+      // Métodos de alimentación
+      abrirModalAlimentacion,
+      cerrarModalAlimentacion,
+      guardarAlimentacion,
+      confirmarEliminarAlimentacion,
+
+      // Métodos de confirmación
+      ejecutarConfirmacion,
+      cerrarModalConfirmacion,
+
+      // Métodos auxiliares
+      getRazaNombre,
+      getAlimentacionNombre
     }
   }
 }
 </script>
-
 
 <style scoped>
 .detalle-cliente {
@@ -445,16 +734,16 @@ export default {
 .error-container {
   text-align: center;
   padding: 4rem 2rem;
-  background: var(--white);
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
+  background: white;
+  border-radius: 0.375rem;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
 }
 
 .loading-container .spinner {
   width: 3rem;
   height: 3rem;
-  border: 4px solid var(--gray-200);
-  border-top: 4px solid var(--primary-color);
+  border: 4px solid #e9ecef;
+  border-top: 4px solid #2e7d5e;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 0 auto 1rem;
@@ -462,25 +751,25 @@ export default {
 
 .error-container i {
   font-size: 4rem;
-  color: var(--gray-300);
+  color: #dee2e6;
   margin-bottom: 1rem;
 }
 
 .error-container h3 {
-  color: var(--gray-600);
+  color: #6c757d;
   margin-bottom: 0.5rem;
 }
 
 .error-container p {
-  color: var(--gray-500);
+  color: #adb5bd;
   margin-bottom: 2rem;
 }
 
 /* Header del cliente */
 .cliente-header {
-  background: linear-gradient(135deg, var(--white), var(--gray-50));
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
+  background: linear-gradient(135deg, white, #f8f9fa);
+  border-radius: 0.375rem;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
   padding: 2rem;
   margin-bottom: 2rem;
   display: flex;
@@ -499,25 +788,25 @@ export default {
 .cliente-avatar {
   width: 80px;
   height: 80px;
-  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  background: linear-gradient(135deg, #2e7d5e, #4a90b8);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--white);
+  color: white;
   font-size: 2rem;
 }
 
 .cliente-datos h2 {
   margin: 0 0 0.5rem 0;
-  color: var(--primary-color);
+  color: #2e7d5e;
   font-size: 1.75rem;
   font-weight: 600;
 }
 
 .cliente-cedula {
   margin: 0 0 0.75rem 0;
-  color: var(--gray-600);
+  color: #6c757d;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -535,7 +824,7 @@ export default {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--gray-500);
+  color: #adb5bd;
   font-size: 0.875rem;
 }
 
@@ -546,17 +835,17 @@ export default {
 
 .stat-card {
   text-align: center;
-  background: var(--white);
+  background: white;
   padding: 1.5rem;
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
+  border-radius: 0.375rem;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
   min-width: 120px;
 }
 
 .stat-number {
   font-size: 2rem;
   font-weight: 700;
-  color: var(--primary-color);
+  color: #2e7d5e;
   margin-bottom: 0.5rem;
 }
 
@@ -565,7 +854,7 @@ export default {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  color: var(--gray-600);
+  color: #6c757d;
   font-size: 0.875rem;
   font-weight: 500;
 }
@@ -573,9 +862,9 @@ export default {
 /* Navegación de pestañas */
 .tabs-nav {
   display: flex;
-  background: var(--white);
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
+  background: white;
+  border-radius: 0.375rem;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
   margin-bottom: 2rem;
   overflow: hidden;
 }
@@ -590,7 +879,7 @@ export default {
   justify-content: center;
   gap: 0.75rem;
   font-weight: 500;
-  color: var(--gray-600);
+  color: #6c757d;
   cursor: pointer;
   transition: all 0.3s;
   position: relative;
@@ -598,19 +887,19 @@ export default {
 }
 
 .tab-button:hover {
-  background: var(--gray-50);
-  color: var(--primary-color);
+  background: #f8f9fa;
+  color: #2e7d5e;
 }
 
 .tab-button.active {
-  color: var(--primary-color);
-  background: var(--gray-50);
-  border-bottom-color: var(--primary-color);
+  color: #2e7d5e;
+  background: #f8f9fa;
+  border-bottom-color: #2e7d5e;
 }
 
 .tab-count {
-  background: var(--primary-color);
-  color: var(--white);
+  background: #2e7d5e;
+  color: white;
   padding: 0.125rem 0.5rem;
   border-radius: 1rem;
   font-size: 0.75rem;
@@ -620,15 +909,15 @@ export default {
 }
 
 .tab-button.active .tab-count {
-  background: var(--white);
-  color: var(--primary-color);
+  background: white;
+  color: #2e7d5e;
 }
 
 /* Contenido de pestañas */
 .tab-content {
-  background: var(--white);
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
+  background: white;
+  border-radius: 0.375rem;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
   overflow: hidden;
 }
 
@@ -641,13 +930,13 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem;
-  border-bottom: 1px solid var(--gray-200);
-  background: var(--gray-50);
+  border-bottom: 1px solid #e9ecef;
+  background: #f8f9fa;
 }
 
 .panel-header h3 {
   margin: 0;
-  color: var(--primary-color);
+  color: #2e7d5e;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -685,30 +974,45 @@ export default {
   gap: 0.5rem;
   margin-bottom: 0.5rem;
   font-weight: 500;
-  color: var(--gray-700);
+  color: #343a40;
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #dee2e6;
+  border-radius: 0.375rem;
+  font-size: 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: #2e7d5e;
+  box-shadow: 0 0 0 3px rgba(46, 125, 94, 0.1);
 }
 
 .form-control:disabled {
-  background: var(--gray-50);
-  color: var(--gray-600);
+  background: #f8f9fa;
+  color: #6c757d;
 }
 
-/* Estado vacío */
+/* Estados vacíos */
 .empty-state {
   text-align: center;
   padding: 4rem 2rem;
-  color: var(--gray-500);
+  color: #adb5bd;
 }
 
 .empty-state i {
   font-size: 3rem;
-  color: var(--gray-300);
+  color: #dee2e6;
   margin-bottom: 1rem;
 }
 
 .empty-state h4 {
   margin-bottom: 0.5rem;
-  color: var(--gray-600);
+  color: #6c757d;
 }
 
 .empty-state p {
@@ -724,31 +1028,31 @@ export default {
 }
 
 .porcino-card {
-  border: 1px solid var(--gray-200);
-  border-radius: var(--border-radius);
+  border: 1px solid #e9ecef;
+  border-radius: 0.375rem;
   overflow: hidden;
   transition: all 0.3s;
 }
 
 .porcino-card:hover {
-  box-shadow: var(--box-shadow);
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
   transform: translateY(-2px);
 }
 
 .porcino-card .card-header {
-  background: var(--gray-50);
+  background: #f8f9fa;
   padding: 1rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid var(--gray-200);
+  border-bottom: 1px solid #e9ecef;
 }
 
 .porcino-id {
   margin: 0;
   font-size: 1.125rem;
   font-weight: 600;
-  color: var(--primary-color);
+  color: #2e7d5e;
 }
 
 .card-actions {
@@ -774,29 +1078,29 @@ export default {
 
 .info-item .label {
   font-weight: 500;
-  color: var(--gray-600);
+  color: #6c757d;
 }
 
 .info-item .value {
   font-weight: 600;
-  color: var(--gray-800);
+  color: #343a40;
 }
 
 .raza-badge {
-  background: var(--primary-color);
-  color: var(--white);
+  background: #2e7d5e;
+  color: white;
   padding: 0.25rem 0.75rem;
   border-radius: 1rem;
   font-size: 0.75rem;
   text-transform: uppercase;
 }
 
-.raza-1 { background: #28a745; } /* York - Verde */
-.raza-2 { background: #007bff; } /* Hampshire - Azul */
-.raza-3 { background: #fd7e14; } /* Duroc - Naranja */
+.raza-1 { background: #28a745; }
+.raza-2 { background: #007bff; }
+.raza-3 { background: #fd7e14; }
 
 .weight {
-  color: var(--success-color);
+  color: #28a745;
   font-weight: 700;
 }
 
@@ -813,28 +1117,112 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem;
-  border: 1px solid var(--gray-200);
-  border-radius: var(--border-radius);
+  border: 1px solid #e9ecef;
+  border-radius: 0.375rem;
   transition: all 0.3s;
 }
 
 .alimentacion-card:hover {
-  box-shadow: var(--box-shadow);
-  border-color: var(--primary-color);
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  border-color: #2e7d5e;
 }
 
 .card-content h4 {
   margin: 0 0 0.5rem 0;
-  color: var(--primary-color);
+  color: #2e7d5e;
   font-size: 1.125rem;
 }
 
 .alimentacion-dosis {
   margin: 0;
-  color: var(--gray-600);
+  color: #6c757d;
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+/* Botones */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 0.375rem;
+  text-decoration: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background-color: #2e7d5e;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #267049;
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background-color: #4a90b8;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background-color: #3a7ea8;
+}
+
+.btn-outline-primary {
+  color: #2e7d5e;
+  border: 1px solid #2e7d5e;
+  background: transparent;
+}
+
+.btn-outline-primary:hover {
+  background: #2e7d5e;
+  color: white;
+}
+
+.btn-outline-secondary {
+  color: #4a90b8;
+  border: 1px solid #4a90b8;
+  background: transparent;
+}
+
+.btn-outline-secondary:hover {
+  background: #4a90b8;
+  color: white;
+}
+
+.btn-outline-danger {
+  color: #dc3545;
+  border: 1px solid #dc3545;
+  background: transparent;
+}
+
+.btn-outline-danger:hover {
+  background: #dc3545;
+  color: white;
+}
+
+.btn-sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Animaciones */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* Responsive */
@@ -891,26 +1279,5 @@ export default {
   .card-actions {
     justify-content: center;
   }
-}
-
-/* Animaciones */
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.tab-panel {
-  animation: fadeIn 0.3s ease-out;
 }
 </style>

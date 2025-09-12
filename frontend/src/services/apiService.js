@@ -81,8 +81,7 @@ export const clienteService = {
   // Generar PDF
   async generarPDF(cedula) {
     const response = await axios.get(
-      `${API.defaults.baseURL}/clientes/reporte/pdf/${cedula}`,
-      {
+      `${API.defaults.baseURL}/clientes/reporte/pdf/${cedula}`, {
         responseType: 'blob',
         timeout: 30000
       }
@@ -106,8 +105,12 @@ export const clienteService = {
 export const porcinoService = {
   // Obtener todos los porcinos (opcional: filtrar por clienteId)
   async obtenerPorcinos(clienteId = null) {
-    const params = clienteId ? { clienteId } : {}
-    return await API.get('/porcinos', { params })
+    const params = clienteId ? {
+      clienteId
+    } : {}
+    return await API.get('/porcinos', {
+      params
+    })
   },
 
   // Obtener porcino por ID
@@ -171,29 +174,25 @@ export const utilsService = {
     try {
       await API.get('/clientes')
       return true
-    // eslint-disable-next-line no-unused-vars
     } catch (error) {
+      console.warn('[Connection Check]:', error.message) // ✅ USAR el error
       return false
     }
   },
 
   // Obtener estadísticas generales
   async obtenerEstadisticas() {
-    // eslint-disable-next-line no-useless-catch
-    try {
-      const [clientes, porcinos, alimentaciones] = await Promise.all([
-        API.get('/clientes'),
-        API.get('/porcinos'),
-        API.get('/alimentacion')
-      ])
+    // ✅ REMOVER try/catch innecesario - dejar que el error se propague
+    const [clientes, porcinos, alimentaciones] = await Promise.all([
+      API.get('/clientes'),
+      API.get('/porcinos'),
+      API.get('/alimentacion')
+    ])
 
-      return {
-        totalClientes: clientes.data?.length || 0,
-        totalPorcinos: porcinos.data?.length || 0,
-        totalAlimentaciones: alimentaciones.data?.length || 0
-      }
-    } catch (error) {
-      throw error
+    return {
+      totalClientes: clientes.data?.length || 0,
+      totalPorcinos: porcinos.data?.length || 0,
+      totalAlimentaciones: alimentaciones.data?.length || 0
     }
   }
 }

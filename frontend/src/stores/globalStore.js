@@ -1,5 +1,9 @@
-import { reactive } from 'vue'
-import { utilsService } from '@/services/apiService'
+import {
+  reactive
+} from 'vue'
+import {
+  utilsService
+} from '@/services/apiService'
 
 // Store global usando Composition API
 export const useGlobalStore = () => {
@@ -67,20 +71,19 @@ export const useGlobalStore = () => {
     state.notifications = []
   }
 
-  // Modal methods
+  // Modal methods CORREGIDOS
   const openModal = (modalName) => {
-    // eslint-disable-next-line no-prototype-builtins
-    if (state.modalStates.hasOwnProperty(modalName)) {
+    if (modalName in state.modalStates) { // ✅ CORREGIDO
       state.modalStates[modalName] = true
     }
   }
 
   const closeModal = (modalName) => {
-    // eslint-disable-next-line no-prototype-builtins
-    if (state.modalStates.hasOwnProperty(modalName)) {
+    if (modalName in state.modalStates) { // ✅ CORREGIDO
       state.modalStates[modalName] = false
     }
   }
+
 
   const closeAllModals = () => {
     Object.keys(state.modalStates).forEach(key => {
@@ -102,8 +105,8 @@ export const useGlobalStore = () => {
       }
 
       return connected
-    // eslint-disable-next-line no-unused-vars
     } catch (error) {
+      console.error('[Backend Connection Error]:', error) // ✅ USAR la variable
       state.backendConnected = false
       showNotification('Error de conexión con el servidor', 'error', 0)
       return false
